@@ -1,0 +1,18 @@
+ version: '3'
+ services:
+   osrm:
+     image: osrm/osrm-backend:latest
+     volumes:
+       - ./data:/data
+     command: |
+       osrm-extract -p /opt/profiles/car.lua /data/minas-gerais.osm.pbf
+       osrm-partition /data/minas-gerais.osrm
+       osrm-customize /data/minas-gerais.osrm
+       osrm-routed --algorithm mld /data/minas-gerais.osrm
+
+     ports:
+       - '5000:5000'
+   redis:
+     image: redis:alpine
+     ports:
+       - '6379:6379'
