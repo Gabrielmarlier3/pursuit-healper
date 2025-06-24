@@ -4,7 +4,8 @@
   "description": "Car tracker that shows automatically a way to find other car",
   "main": "main.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:dev": "npx ts-node src/main.ts"
   },
   "repository": {
     "type": "git",
@@ -18,10 +19,13 @@
   "homepage": "https://github.com/Gabrielmarlier3/pursuit-healper#readme",
   "dependencies": {
     "@nestjs/axios": "^4.0.0",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.3",
+    "@nestjs/platform-express": "^11.1.3",
+    "@nestjs/platform-socket.io": "^11.1.3",
     "@nestjs/schedule": "^6.0.0",
     "@nestjs/websockets": "^11.1.3",
-    "@nestjs/config": "^4.0.2",
+    "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^16.5.0",
     "ioredis": "^5.6.1",
