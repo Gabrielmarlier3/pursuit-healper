@@ -1,18 +1,35 @@
- version: '3'
- services:
-   osrm:
-     image: osrm/osrm-backend:latest
-     volumes:
-       - ./data:/data
-     command: |
-       osrm-extract -p /opt/profiles/car.lua /data/minas-gerais.osm.pbf
-       osrm-partition /data/minas-gerais.osrm
-       osrm-customize /data/minas-gerais.osrm
-       osrm-routed --algorithm mld /data/minas-gerais.osrm
+version: "3.8"
 
-     ports:
-       - '5000:5000'
-   redis:
-     image: redis:alpine
-     ports:
-       - '6379:6379'
+services:
+
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: osrm
+    volumes:
+      - ./data:/data          # put region.osm.pbf (or pre-built *.osrm files) here
+    command: >
+      sh -c "
+        # build .osrm files once, if they don't exist
+        if [ ! -f /data/region.osrm ]; then
+          echo '[OSRM] extracting & contracting map …';
+          osrm-extract   -p /opt/car.lua /data/region.osm.pbf &&
+          osrm-contract  /data/region.osrm;
+        fi &&
+        echo '[OSRM] starting router …' &&
+        osrm-routed --max-table-size=8000 /data/region.osrm
+      "
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

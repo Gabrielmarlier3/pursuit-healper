@@ -11,12 +11,13 @@ export class WebsocketGateway implements OnModuleInit {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
   async onModuleInit() {
+    // duplicate() is already in connecting state
     const subscriber = this.redis.duplicate();
-    await subscriber.connect();
     await subscriber.subscribe('route-updates');
-    subscriber.on('message', (_, message: string) => {
+
+    subscriber.on('message', (_: string, message: string) => {
       const geojson = JSON.parse(message);
-      this.server.emit('route-update', geojson); // broadcast to clients
+      this.server.emit('route-update', geojson); // forward to clients
     });
   }
 }
