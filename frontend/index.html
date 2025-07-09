@@ -1,16 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>Live Route – Drag A / B</title>
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-      html,body,#map{height:100%;margin:0}
-      .label{background:#222;color:#fff;border-radius:4px;padding:2px 6px;font-size:12px}
+      html, body, #map {
+          height: 100%;
+          margin: 0
+      }
+
+      .label {
+          background: #222;
+          color: #fff;
+          border-radius: 4px;
+          padding: 2px 6px;
+          font-size: 12px
+      }
   </style>
 </head>
 <body>
@@ -18,8 +28,8 @@
 
 <script>
   /* === CONFIG === */
-  const OSRM = "http://localhost:5000";
-  const START_A = [-19.9,  -43.9];
+  const OSRM = 'http://localhost:3000';
+  const START_A = [-19.9, -43.9];
   const START_B = [-19.95, -43.95];
 
   /* === MAP INIT === */
@@ -27,36 +37,64 @@
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
   /* === MARKERS (draggable) === */
-  const markerA = L.marker(START_A, {draggable:true}).addTo(map);
-  const markerB = L.marker(START_B, {draggable:true}).addTo(map);
-  markerA.bindTooltip("<div class='label'>A</div>", {permanent:true, direction:'top'}).openTooltip();
-  markerB.bindTooltip("<div class='label'>B</div>", {permanent:true, direction:'top'}).openTooltip();
+  const markerA = L.marker(START_A, { draggable: true }).addTo(map);
+  const markerB = L.marker(START_B, { draggable: true }).addTo(map);
+  markerA.bindTooltip('<div class=\'label\'>A</div>', { permanent: true, direction: 'top' }).openTooltip();
+  markerB.bindTooltip('<div class=\'label\'>B</div>', { permanent: true, direction: 'top' }).openTooltip();
 
   let routeLayer = null;
-  let autoFit    = true;            // auto-fit only until user interacts
+  let autoFit = true;            // auto-fit only until user interacts
 
   /* stop auto-fit when the user pans/zooms */
-  map.on('zoomstart dragstart', () => { autoFit = false; });
+  map.on('zoomstart dragstart', () => {
+    autoFit = false;
+  });
+
 
   async function drawRoute() {
-    const a = markerA.getLatLng();
-    const b = markerB.getLatLng();
-    const url = `${OSRM}/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
+    const url = `${OSRM}/route`;
     const res = await fetch(url);
     const data = await res.json();
     if (!data.routes?.length) return;
 
-    const coords = data.routes[0].geometry.coordinates.map(([lon,lat]) => [lat,lon]);
+    const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
 
     if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(coords, {weight:5, color:'#0077ff'}).addTo(map);
+    routeLayer = L.polyline(coords, { weight: 5, color: '#0077ff' }).addTo(map);
 
-    if (autoFit) map.fitBounds(routeLayer.getBounds(), {padding:[40,40]});
+    if (autoFit) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+  }
+  async function rotateThings() {
+    /* initial draw + refresh every 5 s */
+    console.log(`update`)
+    const a = markerA.getLatLng();
+    const b = markerB.getLatLng();
+    const payload = (isA) => {
+      return {
+        id: isA ? 'A' : 'B',
+        latitude: isA ? a.lat : b.lat,
+        longitude: isA ? a.lng : b.lng,
+      };
+    };
+    await fetch(`${OSRM}/location/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload(true)),
+    });
+    await fetch(`${OSRM}/location/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload(false)),
+    });
+
+    drawRoute();
   }
 
-  /* initial draw + refresh every 5 s */
-  drawRoute();
-  setInterval(drawRoute, 5000);
+  setInterval(rotateThings, 5000);
 
   /* re-draw on drag */
   markerA.on('dragend', drawRoute);
