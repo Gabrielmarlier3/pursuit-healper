@@ -71,6 +71,13 @@ REDIS_PORT=6379
 
 ---
 
+
+
+> 💡 **Opcional:**  
+> Se você preferir que o container gere tudo automaticamente no primeiro start, **pule esta etapa** e vá direto para [Subir tudo via Docker Compose](#subir-tudo-via-docker-compose).  
+> O `docker-compose.yml` já contém lógica para extrair e contrair o mapa caso os arquivos `.osrm` não existam.
+
+
 ## Baixar e preparar o mapa
 
 Escolha **um** dos espelhos e baixe o arquivo `.osm.pbf` da sua região, salvando em `./data` como `region.osm.pbf`.
