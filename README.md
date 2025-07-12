@@ -29,7 +29,7 @@ Aplicação leve que:
 ## Pré-requisitos
 | Ferramenta           | Versão mínima | Finalidade                    |
 |----------------------|---------------|-------------------------------|
-| **Node.js**          | 18 LTS        | Runtime NestJS                |
+| **Node.js**          | 24.4.0        | Runtime NestJS                |
 | **npm / pnpm / yarn**| Atual         | Gerenciar pacotes             |
 | **Docker Desktop**   | 20 +          | Contêineres OSRM e Redis      |
 | **curl / wget**      | —             | Download do arquivo PBF       |
@@ -52,7 +52,7 @@ Aplicação leve que:
 
 ## Clonagem e variáveis de ambiente
 ```bash
-git clone https://github.com/<seu-user>/pursuit-helper.git
+git clone https://github.com/Gabrielmarlier3/pursuit-helper.git
 cd pursuit-helper
 npm install
 
@@ -103,7 +103,7 @@ docker run --rm -v $(pwd)/data:/data osrm/osrm-backend \
 
 Em `data/` devem aparecer:
 `region.osrm`, `region.osrm.datasource_names`, `region.osrm.edges`, `region.osrm.nodes`, etc.
-
+OBS: pode não aparecer pela IDE verifique pelo terminal ou pelos arquivos
 ---
 
 ## Subir tudo via Docker Compose
@@ -143,11 +143,11 @@ npm run start:dev           # NestJS em http://localhost:3000
 
 #### `POST /location/update`
 
-Envia a posição de **A** ou **B**.
+Envia a posição de um ponto, ponto este que é uma string
 
 ```json
 {
-  "id": "A",                // "A" ou "B"
+  "id": "Moto0001",                
   "latitude":  -19.90,
   "longitude": -43.90
 }
@@ -161,9 +161,9 @@ Retorna a rota atual (GeoJSON) — útil para debug.
 
 ## Eventos WebSocket
 
-| Evento         | Payload GeoJSON | Descrição                           |
-| -------------- | --------------- | ----------------------------------- |
-| `route-update` | LineString      | Rota nova a cada 5 s ou drag de A/B |
+| Evento         | Payload GeoJSON | Descrição                          |
+| -------------- | --------------- |------------------------------------|
+| `route-update` | LineString      | Rota nova a cada 5 s               |
 
 Exemplo:
 
@@ -198,6 +198,3 @@ Funcionalidades:
 * **Atualização do mapa** → agende download do `.pbf` e reprocesso mensalmente.
 
 MIT License
-
-```
-```
