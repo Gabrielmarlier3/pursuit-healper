@@ -1,8 +1,8 @@
-import { IsIn, IsLatitude, IsLongitude } from 'class-validator';
+import { IsLatitude, IsLongitude, IsString } from 'class-validator';
 
 export class UpdateLocationDto {
-  @IsIn(['A', 'B'])
-  id: 'A' | 'B';
+  @IsString()
+  id: string;
 
   @IsLatitude()
   latitude: number;

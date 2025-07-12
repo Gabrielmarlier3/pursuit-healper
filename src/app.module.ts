@@ -5,8 +5,13 @@ import { ConfigModule } from '@nestjs/config';
 import { RedisModule } from './redis/redis.module';
 import { LocationModule } from './location/location.module';
 import { RouteModule } from './route/route.module';
-import { TasksModule } from './tasks/tasks.module';
 import { WebsocketModule } from './websocket/websocket.module';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
+import { SeederModule } from './seeder/seeder.module';
+import { RolesGuard } from './common/roles.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { FleetModule } from './fleet/fleet.module';
 
 @Module({
   imports: [
@@ -16,8 +21,12 @@ import { WebsocketModule } from './websocket/websocket.module';
     RedisModule,
     LocationModule,
     RouteModule,
-    TasksModule,
     WebsocketModule,
+    AuthModule,
+    UserModule,
+    SeederModule,
+    FleetModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: RolesGuard }]
 })
 export class AppModule {}

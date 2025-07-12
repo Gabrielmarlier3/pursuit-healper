@@ -1,104 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>Live Route – Drag A / B</title>
+  <title>Central – Fleet View</title>
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <style>
-      html, body, #map {
-          height: 100%;
-          margin: 0
-      }
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-      .label {
-          background: #222;
-          color: #fff;
-          border-radius: 4px;
-          padding: 2px 6px;
-          font-size: 12px
+  <style>
+      html,body,#map{height:100%;margin:0}
+      .label{background:#1e1e1e;color:#fff;border-radius:4px;padding:2px 6px;font-size:11px}
+      #loginBox{
+          position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+          background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px #0003;
+          font-family:sans-serif
       }
   </style>
 </head>
 <body>
 <div id="map"></div>
 
-<script>
-  /* === CONFIG === */
-  const OSRM = 'http://localhost:3000';
-  const START_A = [-19.9, -43.9];
-  const START_B = [-19.95, -43.95];
+<!-- Caixa de login -->
+<div id="loginBox">
+  <h3>Login – Operador Central</h3>
+  <label>Matrícula: <input id="mat" value="0001"></label><br><br>
+  <label>Senha: <input id="pass" type="password" value="admin"></label><br><br>
+  <button onclick="login()">Entrar</button>
+  <div id="msg" style="color:red;margin-top:8px"></div>
+</div>
 
-  /* === MAP INIT === */
-  const map = L.map('map').setView(START_A, 13);
+<script>
+  /* ===== CONFIG ===== */
+  const API = 'http://localhost:3000';            // backend Nest
+  let token = '';                                 // JWT após login
+  let socket = null;
+
+  /* ===== MAP ===== */
+  const map = L.map('map').setView([-19.92,-43.94], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-  /* === MARKERS (draggable) === */
-  const markerA = L.marker(START_A, { draggable: true }).addTo(map);
-  const markerB = L.marker(START_B, { draggable: true }).addTo(map);
-  markerA.bindTooltip('<div class=\'label\'>A</div>', { permanent: true, direction: 'top' }).openTooltip();
-  markerB.bindTooltip('<div class=\'label\'>B</div>', { permanent: true, direction: 'top' }).openTooltip();
+  const markers   = {};     // id → Leaflet marker
+  const routeLines= {};     // id → polyline
 
-  let routeLayer = null;
-  let autoFit = true;            // auto-fit only until user interacts
-
-  /* stop auto-fit when the user pans/zooms */
-  map.on('zoomstart dragstart', () => {
-    autoFit = false;
-  });
-
-
-  async function drawRoute() {
-    const url = `${OSRM}/route`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!data.routes?.length) return;
-
-    const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
-
-    if (routeLayer) map.removeLayer(routeLayer);
-    routeLayer = L.polyline(coords, { weight: 5, color: '#0077ff' }).addTo(map);
-
-    if (autoFit) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
-  }
-  async function rotateThings() {
-    /* initial draw + refresh every 5 s */
-    console.log(`update`)
-    const a = markerA.getLatLng();
-    const b = markerB.getLatLng();
-    const payload = (isA) => {
-      return {
-        id: isA ? 'A' : 'B',
-        latitude: isA ? a.lat : b.lat,
-        longitude: isA ? a.lng : b.lng,
-      };
-    };
-    await fetch(`${OSRM}/location/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload(true)),
+  /* ===== Login ===== */
+  async function login(){
+    const matricula='0001'
+    const senha='admin'
+    const res=await fetch(`${API}/auth/login`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({matricula,senha})
     });
-    await fetch(`${OSRM}/location/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload(false)),
-    });
-
-    drawRoute();
+    if(!res.ok){ document.getElementById('msg').textContent='Credenciais inválidas';return; }
+    token=`Bearer ${(await res.json()).access_token}`;
+    document.getElementById('loginBox').remove();
+    initSocket();
+    fetchAllPositions();          // uma carga inicial
   }
 
-  setInterval(rotateThings, 5000);
+  /* ===== WebSocket ===== */
+  function initSocket(){
+    socket=io(API.replace('http','ws'), {
+      auth: { token }            // enviado no handshake
+    });
+    socket.on('connect',()=>console.log('WS conectado'));
+    socket.on('fleet-update', handleFleetUpdate);
+    socket.on('route-update', handleRouteUpdate);
+  }
 
-  /* re-draw on drag */
-  markerA.on('dragend', drawRoute);
-  markerB.on('dragend', drawRoute);
+  /* ===== Handlers ===== */
+  function handleFleetUpdate(data){
+    // data = { id, latitude, longitude, vehicleType }
+    data.forEach(v=>{
+      const latLng=[v.latitude,v.longitude];
+      if(!markers[v.id]){
+        const m=L.marker(latLng).addTo(map);
+        m.bindTooltip(`<div class='label'>${v.id}</div>`,
+          {permanent:true,direction:'top'}).openTooltip();
+        markers[v.id]=m;
+      }else{
+        markers[v.id].setLatLng(latLng);
+      }
+    });
+  }
+  function handleRouteUpdate({ id, geometry }){
+    // geometry = GeoJSON LineString
+    const coords=geometry.coordinates.map(([lon,lat])=>[lat,lon]);
+    if(routeLines[id]) map.removeLayer(routeLines[id]);
+    routeLines[id]=L.polyline(coords,{color:'#0077ff',weight:4}).addTo(map);
+  }
+
+  /* ===== Carga inicial ===== */
+  async function fetchAllPositions(){
+    const res=await fetch(`${API}/fleet/central`,{headers:{Authorization:token}});
+    if(!res.ok) return console.warn('Falha ao obter posições iniciais');
+    const data=await res.json();          // [{id,lat,lon,vehicleType},...]
+    handleFleetUpdate(data);
+  }
 </script>
 </body>
 </html>

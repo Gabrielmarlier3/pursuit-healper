@@ -27,12 +27,13 @@ Aplicação leve que:
 ---
 
 ## Pré-requisitos
-| Ferramenta           | Versão mínima | Finalidade                    |
-|----------------------|---------------|-------------------------------|
-| **Node.js**          | 24.4.0        | Runtime NestJS                |
-| **npm / pnpm / yarn**| Atual         | Gerenciar pacotes             |
-| **Docker Desktop**   | 20 +          | Contêineres OSRM e Redis      |
-| **curl / wget**      | —             | Download do arquivo PBF       |
+| Ferramenta            | Versão mínima | Finalidade               |
+|-----------------------|---------------|--------------------------|
+| **Node.js**           | 24.4.0        | Runtime NestJS           |
+| **npm / pnpm / yarn** | Atual         | Gerenciar pacotes        |
+| **Docker Desktop**    | 20 +          | Contêineres OSRM e Redis |
+| **curl / wget**       | —             | Download do arquivo PBF  |
+| **@nest/cli**         | —             | executar o projeto       |
 
 ---
 
@@ -55,6 +56,7 @@ Aplicação leve que:
 git clone https://github.com/Gabrielmarlier3/pursuit-helper.git
 cd pursuit-helper
 npm install
+npm install -g @nestjs/cli
 
 # copie o template e ajuste se necessário
 cp .env.example .env
